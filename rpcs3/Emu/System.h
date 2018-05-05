@@ -147,6 +147,14 @@ enum class frame_limit_type
 	_auto,
 };
 
+enum class detail_level
+{
+	minimal,
+	low,
+	medium,
+	high,
+};
+
 enum CellNetCtlState : s32;
 enum CellSysutilLang : s32;
 
@@ -390,6 +398,19 @@ struct cfg_root : cfg::node
 			cfg::_bool force_primitive_restart{this, "Force primitive restart flag"};
 
 		} vk{this};
+
+		struct node_perf_overlay : cfg::node
+		{
+			using detai_level = detail_level;
+
+			node_perf_overlay(cfg::node* _this) : cfg::node(_this, "Perfomance Overlay") {}
+
+			cfg::_bool perf_overlay_enabled{this, "Enabled", true};	// TODO(velocity): (disable by default)
+			cfg::_enum<detai_level> level{this, "Detail level", detai_level::high};
+			cfg::_int<30, 5000> update_interval{this, "Metrics update interval (ms)", 350};
+			cfg::_int<4, 36> font_size{this, "Font size (px)", 11};
+
+		} perf_overlay{this};
 
 	} video{this};
 

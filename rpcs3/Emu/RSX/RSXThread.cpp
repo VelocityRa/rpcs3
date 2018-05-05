@@ -347,6 +347,16 @@ namespace rsx
 		if (supports_native_ui)
 		{
 			m_overlay_manager = fxm::make_always<rsx::overlays::display_manager>();
+
+			if (g_cfg.video.perf_overlay.perf_overlay_enabled)
+			{
+				auto perf_overlay = m_overlay_manager->create<rsx::overlays::perf_metrics_overlay>(false);
+
+				perf_overlay->set_detail_level(g_cfg.video.perf_overlay.level);
+				perf_overlay->set_update_interval(g_cfg.video.perf_overlay.update_interval);
+				perf_overlay->set_font_size(g_cfg.video.perf_overlay.font_size);
+				perf_overlay->init();
+			}
 		}
 
 		on_init_thread();
@@ -2196,6 +2206,7 @@ namespace rsx
 
 	void thread::flip(int buffer)
 	{
+		this->get()->get_cycles();
 		if (g_cfg.video.frame_skip_enabled)
 		{
 			m_skip_frame_ctr++;
