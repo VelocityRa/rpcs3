@@ -750,6 +750,30 @@ error_code sceNpMatching2GetRoomSlotInfoLocal(SceNpMatching2ContextId ctxId, con
 		return SCE_NP_MATCHING2_ERROR_NOT_INITIALIZED;
 	}
 
+	roomSlotInfo->roomId        = roomId;
+	roomSlotInfo->publicSlotNum    = 2;
+	roomSlotInfo->passwordSlotMask   = 0;
+	roomSlotInfo->privateSlotNum     = 0;
+	roomSlotInfo->openPrivateSlotNum = 0;
+
+	const std::set<SceNpMatching2RoomMemberId> member_list = nph.room_members[roomId];
+	const u32 num_members = static_cast<u32>(member_list.size());
+
+	// is this right?
+	if (num_members == 1)
+	{
+		roomSlotInfo->joinedSlotMask = 0b1; // 0xFFFFFFFFFFFFFFFF
+	}
+	else if (num_members == 2)
+	{
+		//__debugbreak();
+		roomSlotInfo->joinedSlotMask = 0b11; // 0xFFFFFFFFFFFFFFFF
+	}
+	else
+		__debugbreak();
+
+	roomSlotInfo->openPublicSlotNum = 2 - num_members;
+
 	return CELL_OK;
 }
 
@@ -783,7 +807,11 @@ error_code sceNpMatching2AbortContextStart(SceNpMatching2ContextId ctxId)
 
 error_code sceNpMatching2GetRoomMemberIdListLocal(SceNpMatching2ContextId ctxId, SceNpMatching2RoomId roomId, s32 sortMethod, vm::ptr<SceNpMatching2RoomMemberId> memberId, u32 memberIdNum)
 {
-	sceNp2.todo("sceNpMatching2GetRoomMemberIdListLocal(ctxId=%d, roomId=%d, sortMethod=%d, memberId=*0x%x, memberIdNum=%d)", ctxId, roomId, sortMethod, memberId, memberIdNum);
+	static u32 prev_num_members = 0;
+	static bool should_log      = true;
+
+	if (should_log)
+		sceNp2.success("sceNpMatching2GetRoomMemberIdListLocal(ctxId=%d, roomId=%d, sortMethod=%d, memberId=*0x%x, memberIdNum=%d)", ctxId, roomId, sortMethod, memberId, memberIdNum);
 
 	auto& nph = g_fxo->get<named_thread<np_handler>>();
 
@@ -792,7 +820,35 @@ error_code sceNpMatching2GetRoomMemberIdListLocal(SceNpMatching2ContextId ctxId,
 		return SCE_NP_MATCHING2_ERROR_NOT_INITIALIZED;
 	}
 
-	return CELL_OK;
+	if (!check_match2_context(ctxId))
+	{
+		return SCE_NP_MATCHING2_ERROR_CONTEXT_NOT_FOUND;
+	}
+
+	// TODO: mutex
+	//const std::vector<SceNpMatching2RoomMemberId> member_list = nph.get_match2_member_list_local(ctxId, roomId, sortMethod);
+	const std::set<SceNpMatching2RoomMemberId> member_list = nph.room_members[roomId];
+	const u32 num_members = std::min(static_cast<u32>(member_list.size()), memberIdNum);
+
+	if (memberId)
+	{
+		u32 i = 0;
+		for (auto m : member_list)
+		{
+			memberId[i] = m;
+
+			if (should_log)
+				sceNp2.success("sceNpMatching2GetRoomMemberIdListLocal member #%d: %d (total: %d)", i, m, num_members);
+
+			if (++i >= num_members)
+				break;
+		}
+	}
+
+	should_log = (prev_num_members != num_members);
+	prev_num_members = num_members;
+
+	return not_an_error(num_members);
 }
 
 error_code sceNpMatching2JoinRoom(
@@ -1157,6 +1213,8 @@ error_code sceNpMatching2SetRoomMemberDataInternal(
 	{
 		return res;
 	}
+
+	*assignedReqId = nph.set_roommemberdata_internal(ctxId, optParam, reqParam.get_ptr());
 
 	return CELL_OK;
 }

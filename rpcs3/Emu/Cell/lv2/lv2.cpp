@@ -1022,6 +1022,8 @@ public:
 
 	void print_stats() noexcept
 	{
+		return;
+
 		std::multimap<u64, u64, std::greater<u64>> usage;
 
 		for (u32 i = 0; i < 1024; i++)
@@ -1075,7 +1077,7 @@ extern void ppu_execute_syscall(ppu_thread& ppu, u64 code)
 
 	if (code < g_ppu_syscall_table.size())
 	{
-		g_fxo->get<named_thread<ppu_syscall_usage>>().stat[code]++;
+		//g_fxo->get<named_thread<ppu_syscall_usage>>().stat[code]++;
 
 		if (const auto func = g_ppu_syscall_table[code].first)
 		{

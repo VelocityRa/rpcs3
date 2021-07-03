@@ -34,7 +34,7 @@
 
 LOG_CHANNEL(rpcn_log, "rpcn");
 
-#define RPCN_PROTOCOL_VERSION 10
+#define RPCN_PROTOCOL_VERSION 11
 #define RPCN_HEADER_SIZE 9
 #define COMMUNICATION_ID_SIZE 9
 
@@ -1011,6 +1011,43 @@ bool rpcn_client::set_roomdata_internal(u32 req_id, const SceNpCommunicationId& 
 	memcpy(data.data() + COMMUNICATION_ID_SIZE + sizeof(u32), buf, bufsize);
 
 	if (!forge_send(CommandType::SetRoomDataInternal, req_id, data))
+		return false;
+
+	return true;
+}
+
+bool rpcn_client::set_roommemberdata_internal(u32 req_id, const SceNpCommunicationId& communication_id, const SceNpMatching2SetRoomMemberDataInternalRequest* req)
+{
+	std::vector<u8> data{};
+
+	//	extra_nps::print_set_roommemberdata_req(req);
+
+	flatbuffers::FlatBufferBuilder builder(1024);
+	flatbuffers::Offset<flatbuffers::Vector<flatbuffers::Offset<BinAttr>>> final_binattrinternal_vec;
+	if (req->roomMemberBinAttrInternalNum)
+	{
+		std::vector<flatbuffers::Offset<BinAttr>> davec;
+		for (u32 i = 0; i < req->roomMemberBinAttrInternalNum; i++)
+		{
+			auto bin = CreateBinAttr(builder, req->roomMemberBinAttrInternal[i].id, builder.CreateVector(req->roomMemberBinAttrInternal[i].ptr.get_ptr(), req->roomMemberBinAttrInternal[i].size));
+			davec.push_back(bin);
+		}
+		final_binattrinternal_vec = builder.CreateVector(davec);
+	}
+
+	auto req_finished =
+	    CreateSetRoomMemberDataInternalRequest(builder, req->roomId, req->memberId, req->teamId, req->flagFilter, req->flagAttr, final_binattrinternal_vec);
+
+	builder.Finish(req_finished);
+	u8* buf     = builder.GetBufferPointer();
+	usz bufsize = builder.GetSize();
+	data.resize(COMMUNICATION_ID_SIZE + bufsize + sizeof(u32));
+
+	memcpy(data.data(), communication_id.data, COMMUNICATION_ID_SIZE);
+	reinterpret_cast<le_t<u32>&>(data[COMMUNICATION_ID_SIZE]) = static_cast<u32>(bufsize);
+	memcpy(data.data() + COMMUNICATION_ID_SIZE + sizeof(u32), buf, bufsize);
+
+	if (!forge_send(CommandType::SetRoomMemberDataInternal, req_id, data))
 		return false;
 
 	return true;

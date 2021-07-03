@@ -977,7 +977,7 @@ struct network_thread
 		WSAStartup(MAKEWORD(2, 2), &wsa_data);
 #endif
 		if (g_cfg.net.psn_status == np_psn_status::rpcn)
-			list_p2p_ports.emplace(std::piecewise_construct, std::forward_as_tuple(3658), std::forward_as_tuple(3658));
+			list_p2p_ports.emplace(std::piecewise_construct, std::forward_as_tuple(NP_PORT), std::forward_as_tuple(NP_PORT));
 	}
 
 	~network_thread()
@@ -1147,7 +1147,7 @@ s32 send_packet_from_p2p_port(const std::vector<u8>& data, const sockaddr_in& ad
 	auto& nc = g_fxo->get<network_context>();
 	{
 		std::lock_guard list_lock(nc.list_p2p_ports_mutex);
-		auto& def_port = nc.list_p2p_ports.at(3658);
+		auto& def_port = nc.list_p2p_ports.at(NP_PORT);
 
 		res = ::sendto(def_port.p2p_socket, reinterpret_cast<const char*>(data.data()), data.size(), 0, reinterpret_cast<const sockaddr*>(&addr), sizeof(sockaddr_in));
 	}
@@ -1161,7 +1161,7 @@ std::vector<std::vector<u8>> get_rpcn_msgs()
 	auto& nc = g_fxo->get<network_context>();
 	{
 		std::lock_guard list_lock(nc.list_p2p_ports_mutex);
-		auto& def_port = nc.list_p2p_ports.at(3658);
+		auto& def_port = nc.list_p2p_ports.at(NP_PORT);
 		{
 			std::lock_guard lock(def_port.s_rpcn_mutex);
 			msgs = std::move(def_port.rpcn_msgs);
@@ -1178,7 +1178,7 @@ std::vector<std::pair<std::pair<u32, u16>, std::vector<u8>>> get_sign_msgs()
 	auto& nc = g_fxo->get<network_context>();
 	{
 		std::lock_guard list_lock(nc.list_p2p_ports_mutex);
-		auto& def_port = nc.list_p2p_ports.at(3658);
+		auto& def_port = nc.list_p2p_ports.at(NP_PORT);
 		{
 			std::lock_guard lock(def_port.s_sign_mutex);
 			msgs = std::move(def_port.sign_msgs);
@@ -1456,6 +1456,8 @@ error_code sys_net_bnet_bind(ppu_thread& ppu, s32 s, vm::cptr<sys_net_sockaddr> 
 
 		if (sock.type == SYS_NET_SOCK_DGRAM_P2P || sock.type == SYS_NET_SOCK_STREAM_P2P)
 		{
+			//__debugbreak();
+			//std::terminate();
 			auto psa_in_p2p = reinterpret_cast<const sys_net_sockaddr_in_p2p*>(psa_in);
 			u16 p2p_port, p2p_vport;
 			if (sock.type == SYS_NET_SOCK_DGRAM_P2P)
@@ -1472,9 +1474,9 @@ error_code sys_net_bnet_bind(ppu_thread& ppu, s32 s, vm::cptr<sys_net_sockaddr> 
 
 			sys_net.notice("[P2P] %s, Socket bind to %s:%d:%d", sock.type, inet_ntoa(name.sin_addr), p2p_port, p2p_vport);
 
-			if (p2p_port != 3658)
+			if (p2p_port != NP_PORT)
 			{
-				sys_net.warning("[P2P] Attempting to bind a socket to a port != 3658");
+				sys_net.warning("[P2P] Attempting to bind a socket to a port != NP_PORT");
 			}
 			ensure(p2p_vport != 0);
 
@@ -3104,7 +3106,7 @@ error_code sys_net_bnet_socket(ppu_thread& ppu, s32 family, s32 type, s32 protoc
 	const auto sock_lv2 = std::make_shared<lv2_socket>(native_socket, type, family);
 	if (type == SYS_NET_SOCK_STREAM_P2P)
 	{
-		sock_lv2->p2p.port = 3658; // Default value if unspecified later
+		sock_lv2->p2p.port = NP_PORT; // Default value if unspecified later
 	}
 
 	const s32 s = idm::import_existing<lv2_socket>(sock_lv2);
@@ -3403,7 +3405,7 @@ error_code sys_net_bnet_select(ppu_thread& ppu, s32 nfds, vm::ptr<sys_net_fd_set
 {
 	ppu.state += cpu_flag::wait;
 
-	sys_net.warning("sys_net_bnet_select(nfds=%d, readfds=*0x%x, writefds=*0x%x, exceptfds=*0x%x, timeout=*0x%x)", nfds, readfds, writefds, exceptfds, _timeout);
+	//sys_net.warning("sys_net_bnet_select(nfds=%d, readfds=*0x%x, writefds=*0x%x, exceptfds=*0x%x, timeout=*0x%x)", nfds, readfds, writefds, exceptfds, _timeout);
 
 	atomic_t<s32> signaled{0};
 

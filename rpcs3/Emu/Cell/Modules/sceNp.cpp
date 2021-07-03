@@ -1,4 +1,4 @@
-﻿#include "stdafx.h"
+#include "stdafx.h"
 #include "Emu/System.h"
 #include "Emu/system_utils.hpp"
 #include "Emu/VFS.h"
@@ -763,6 +763,10 @@ error_code sceNpBasicSetPresenceDetails2(vm::cptr<SceNpBasicPresenceDetails2> pr
 	{
 		return SCE_NP_BASIC_ERROR_EXCEEDS_MAX;
 	}
+
+	// todo: check NULLs
+	sceNp.todo("    sceNpBasicSetPresenceDetails2: state=0x%X title=%s status=%s comment=%s data=%s",
+	    pres->state, (char*)pres->title, (char*)pres->status, (char*)pres->comment, (char*)pres->data);
 
 	return CELL_OK;
 }
@@ -4648,7 +4652,7 @@ error_code sceNpSignalingGetLocalNetInfo(u32 ctx_id, vm::ptr<SceNpSignalingNetIn
 	info->nat_status    = 0;
 	info->upnp_status   = 0;
 	info->npport_status = 0;
-	info->npport        = 3658;
+	info->npport        = NP_PORT;
 
 	return CELL_OK;
 }
