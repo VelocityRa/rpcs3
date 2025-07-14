@@ -511,6 +511,10 @@ void GLGSRender::bind_texture_env()
 	}
 }
 
+inline bool contains(const std::string& str, const std::string& substr)
+{
+	return str.find(substr) != std::string::npos;
+}
 void GLGSRender::emit_geometry(u32 sub_index)
 {
 	const auto do_heap_cleanup = [this]()
@@ -605,7 +609,35 @@ void GLGSRender::emit_geometry(u32 sub_index)
 		}
 		else if (draw_call.is_single_draw())
 		{
-			glDrawArrays(draw_mode, 0, upload_info.vertex_draw_count);
+			// if (m_vertex_prog->id)
+			//if (contains(m_vertex_prog->shader.get_source(), ":b8016a"))
+			//{
+			//	rsx_log.warning("skipping draw v");
+			//}
+
+			//vert:
+			//:4697efd3
+			//frag:
+			//:8101a2
+
+			bool skip_draw = false;
+			if (g_skip_hud_draw) {
+				skip_draw = contains(m_fragment_prog->shader.get_source(), ":b8016a") &&
+				            !contains(m_vertex_prog->shader.get_source(), ":d8f2886c");
+				if (!skip_draw&&
+					contains(m_vertex_prog->shader.get_source(), ":4697efd3") &&
+					contains(m_fragment_prog->shader.get_source(), ":8101a2")) {
+					skip_draw = true;
+				}
+			}
+				//)
+			{
+				//rsx_log.warning("skipping draw f");
+			}
+			//if (m_fragment_prog->shader.compiled)
+			if (!skip_draw) {
+				glDrawArrays(draw_mode, 0, upload_info.vertex_draw_count);
+			}
 		}
 		else
 		{

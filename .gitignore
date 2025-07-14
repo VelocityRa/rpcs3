@@ -122,3 +122,4 @@ CMakeUserPresets.json
 
 .cache/
 .lldbinit
+/3rdparty

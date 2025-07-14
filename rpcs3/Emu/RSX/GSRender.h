@@ -16,6 +16,8 @@ enum wm_event
 	window_visibility_changed
 };
 
+extern bool g_skip_hud_draw;
+
 class GSRender : public rsx::thread
 {
 protected:

@@ -2,6 +2,7 @@
 #include "VertexProgramDecompiler.h"
 
 #include <sstream>
+#include "ProgramStateCache.h"
 
 std::string VertexProgramDecompiler::GetMask(bool is_sca) const
 {
@@ -433,6 +434,17 @@ std::string VertexProgramDecompiler::BuildCode()
 	insertMainStart(OS);
 	OS << main_body.c_str() << std::endl;
 	insertMainEnd(OS);
+
+	std::stringstream shader_hex_str;
+	// neolib::hex_dump((const void*)m_prog.data.data(), m_prog.data.size(), shader_hex_str, 16, "// ");
+
+	// OS << "\n// Instruction Count: " << m_prog.data.size() / 4 << "\n\n";
+
+	const u32 hash = (u32)program_hash_util::vertex_program_utils::get_vertex_program_ucode_hash(m_prog);
+	OS << "\n// Hash :" << std::hex << hash << "\n\n";
+
+	OS << "// Hex dump:\n";
+	OS << shader_hex_str.str();
 
 	return OS.str();
 }

@@ -40,6 +40,10 @@ namespace gui
 			gw_mute_unmute,
 			gw_volume_up,
 			gw_volume_down,
+			gw_dbz_freecam_toggle,
+			gw_dbz_hud_toggle,
+			gw_dbz_fov_increase,
+			gw_dbz_fov_decrease,
 
 			count
 		};

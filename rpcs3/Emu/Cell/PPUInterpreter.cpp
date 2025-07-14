@@ -3599,6 +3599,10 @@ auto RLDICL()
 		return ppu_exec_select<Flags...>::template select<>();
 
 	static const auto exec = [](ppu_thread& ppu, ppu_opcode_t op) {
+		if (0x00098f14 == ppu.cia) {
+			//std::memcpy((void*)0x3003ec280, (void*)0x3003EBF00, 16 * 4);
+		}
+
 	ppu.gpr[op.ra] = utils::rol64(ppu.gpr[op.rs], op.sh64) & (~0ull >> op.mbe64);
 	if constexpr (((Flags == has_rc) || ...))
 		ppu_cr_set<s64>(ppu, 0, ppu.gpr[op.ra], 0);
@@ -6683,6 +6687,10 @@ auto FNEG()
 		return ppu_exec_select<Flags...>::template select<use_dfma>();
 
 	static const auto exec = [](ppu_thread& ppu, ppu_opcode_t op) {
+		if (0x00012a98 == ppu.cia) {
+			//std::memcpy((void*)0x3003ec280, (void*)0x3003EBF00, 16 * 4);
+			//ppu.cia += 4;
+		}
 	ppu.fpr[op.frd] = -ppu.fpr[op.frb];
 	if constexpr (((Flags == has_rc) || ...))
 		ppu_cr_set(ppu, 1, ppu.fpscr.fg, ppu.fpscr.fl, ppu.fpscr.fe, ppu.fpscr.fu);

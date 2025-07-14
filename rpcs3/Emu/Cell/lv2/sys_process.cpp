@@ -487,7 +487,7 @@ void lv2_exitspawn(ppu_thread& ppu, std::vector<std::string>& argv, std::vector<
 				Emu.klic.emplace_back(klic);
 			}
 
-			Emu.SetForceBoot(true);
+			//Emu.SetForceBoot(true);
 
 			auto res = Emu.BootGame(path, "", true, cfg_mode::continuous, old_config);
 

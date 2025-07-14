@@ -3,6 +3,8 @@
 #include "Emu/System.h"
 #include "GSRender.h"
 
+bool g_skip_hud_draw{};
+
 GSRender::GSRender(utils::serial* ar) noexcept : rsx::thread(ar)
 {
 	if (auto gs_frame = Emu.GetCallbacks().get_gs_frame())

@@ -302,6 +302,7 @@ struct RSXFragmentProgram
 	u32 ctrl = 0;
 	u32 texcoord_control_mask = 0;
 	u32 mrt_buffers_count = 0;
+	//bool is_game_hud{};
 
 	bool two_sided_lighting = false;
 

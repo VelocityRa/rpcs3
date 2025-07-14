@@ -2,6 +2,7 @@
 #include "FragmentProgramDecompiler.h"
 
 #include <algorithm>
+#include "ProgramStateCache.h"
 
 namespace rsx
 {
@@ -1069,6 +1070,18 @@ std::string FragmentProgramDecompiler::BuildCode()
 	}
 	insertMainEnd(OS);
 
+	std::stringstream shader_hex_str;
+	//neolib::hex_dump((const void*)m_prog.data.data(), m_prog.data.size(), shader_hex_str, 16, "// ");
+
+	//OS << "\n// Instruction Count: " << m_prog.data.size() / 4 << "\n\n";
+
+	const u32 hash = (u32)program_hash_util::fragment_program_utils::get_fragment_program_ucode_hash(m_prog);
+	OS << "\n// Hash :" << std::hex << hash << "\n\n";
+
+	//m_prog.is_game_hud = (hash == 0xb8016a);
+
+	OS << "// Hex dump:\n";
+	OS << shader_hex_str.str();
 	return OS.str();
 }
 

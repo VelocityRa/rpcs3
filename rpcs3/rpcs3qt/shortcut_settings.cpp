@@ -32,6 +32,10 @@ void fmt_class_string<shortcut>::format(std::string& out, u64 arg)
 		case shortcut::gw_mute_unmute: return "gw_mute_unmute";
 		case shortcut::gw_volume_up: return "gw_volume_up";
 		case shortcut::gw_volume_down: return "gw_volume_down";
+		case shortcut::gw_dbz_freecam_toggle: return "gw_dbz_freecam_toggle";
+		case shortcut::gw_dbz_hud_toggle: return "gw_dbz_hud_toggle";
+		case shortcut::gw_dbz_fov_increase: return "gw_dbz_fov_increase";
+		case shortcut::gw_dbz_fov_decrease: return "gw_dbz_fov_decrease";
 		case shortcut::count: return "count";
 		}
 
@@ -79,6 +83,10 @@ shortcut_settings::shortcut_settings()
 		{ shortcut::gw_mute_unmute, shortcut_info{ "gw_mute_unmute", tr("Mute/Unmute Audio"), "Ctrl+Shift+M", shortcut_handler_id::game_window, false } },
 		{ shortcut::gw_volume_up, shortcut_info{ "gw_volume_up", tr("Volume Up"), "Ctrl+Shift++", shortcut_handler_id::game_window, true } },
 		{ shortcut::gw_volume_down, shortcut_info{ "gw_volume_down", tr("Volume Down"), "Ctrl+Shift+-", shortcut_handler_id::game_window, true } },
+		{ shortcut::gw_dbz_freecam_toggle, shortcut_info{ "gw_dbz_freecam_toggle", tr("DBZ Freecam Toggle"), "F7", shortcut_handler_id::game_window, true } },
+		{ shortcut::gw_dbz_hud_toggle, shortcut_info{ "gw_dbz_hud_toggle", tr("DBZ HUD Toggle"), "F8", shortcut_handler_id::game_window, true } },
+		{ shortcut::gw_dbz_fov_increase, shortcut_info{ "gw_dbz_fov_increase", tr("DBZ Increase FoV"), "F5", shortcut_handler_id::game_window, true } },
+		{ shortcut::gw_dbz_fov_decrease, shortcut_info{ "gw_dbz_fov_decrease", tr("DBZ Decrease FoV"), "F6", shortcut_handler_id::game_window, true } },
 	})
 {
 }

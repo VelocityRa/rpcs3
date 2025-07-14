@@ -19,6 +19,8 @@
 #include "Emu/Io/interception.h"
 #include "Emu/Io/recording_config.h"
 
+#include "Emu/RSX/GSRender.h"
+
 #include <QApplication>
 #include <QDateTime>
 #include <QKeyEvent>
@@ -372,6 +374,30 @@ void gs_frame::handle_shortcut(gui::shortcuts::shortcut shortcut_key, const QKey
 	case gui::shortcuts::shortcut::gw_volume_down:
 	{
 		audio::change_volume(-5);
+		break;
+	}
+	case gui::shortcuts::shortcut::gw_dbz_freecam_toggle:
+	{
+		static bool toggle{true};
+		vm::write32(0x004138F4, toggle ? 0x2 : 0x0);
+		toggle = !toggle;
+		break;
+	}
+	case gui::shortcuts::shortcut::gw_dbz_hud_toggle:
+	{
+		g_skip_hud_draw = !g_skip_hud_draw;
+		break;
+	}
+	case gui::shortcuts::shortcut::gw_dbz_fov_increase:
+	{
+		vm::ptr<f32> fov_ptr(vm::addr_t(0x00098e6c));
+		*fov_ptr -= 15.0;
+		break;
+	}
+	case gui::shortcuts::shortcut::gw_dbz_fov_decrease:
+	{
+		vm::ptr<f32> fov_ptr(vm::addr_t(0x00098e6c));
+		*fov_ptr += 15.0;
 		break;
 	}
 	default:
