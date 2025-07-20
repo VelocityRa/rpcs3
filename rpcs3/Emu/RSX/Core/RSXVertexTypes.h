@@ -4,6 +4,9 @@
 #include "../Common/simple_array.hpp"
 #include "../gcm_enums.h"
 
+#include <array>
+#include <map>
+#include <mutex>
 #include <span>
 
 namespace rsx
@@ -62,12 +65,24 @@ namespace rsx
 		u32  real_offset_address = 0;
 		u8   memory_location = 0;
 		u8   attribute_stride = 0;
+		vertex_base_type attribute_type = {};
+		u8 attribute_size               = {};
+		u16 attribute_frequency         = {};
 		std::pair<u32, u32> vertex_range{};
 
 		rsx::simple_array<interleaved_attribute_t> locations;
 
 		// Check if we need to upload a full unoptimized range, i.e [0-max_index]
 		std::pair<u32, u32> calculate_required_range(u32 first, u32 count);
+
+		std::string to_str() const
+		{
+			//return fmt::format("{ {attr: stride: %d type: %d size: %d freq: %d } interl: %d, single_vt: %d, base_offset: 0x%X, real_off_addr: 0x%X, memory_loc: 0x%X, locs#: %d }",
+			//attribute_stride, (u8)attribute_type, attribute_size, attribute_frequency, interleaved, single_vertex, base_offset, real_offset_address, memory_location, locations.size());
+
+			return fmt::format("{ {attr: stride: %d type: %d size: %d freq: %d } interl: %d, m_loc: 0x%X, locs#: %d }",
+				attribute_stride, (u8)attribute_type, attribute_size, attribute_frequency, interleaved, memory_location, locations.size());
+		}
 	};
 
 	enum attribute_buffer_placement : u8

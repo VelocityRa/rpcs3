@@ -40,6 +40,8 @@ namespace gui
 			gw_mute_unmute,
 			gw_volume_up,
 			gw_volume_down,
+			gw_mesh_dump,
+			gw_mesh_dump_posed_toggle,
 
 			count
 		};

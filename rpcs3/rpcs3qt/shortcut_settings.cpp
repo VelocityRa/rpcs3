@@ -32,6 +32,8 @@ void fmt_class_string<shortcut>::format(std::string& out, u64 arg)
 		case shortcut::gw_mute_unmute: return "gw_mute_unmute";
 		case shortcut::gw_volume_up: return "gw_volume_up";
 		case shortcut::gw_volume_down: return "gw_volume_down";
+		case shortcut::gw_mesh_dump: return "gw_mesh_dump";
+		case shortcut::gw_mesh_dump_posed_toggle: return "gw_mesh_dump_posed_toggle";
 		case shortcut::count: return "count";
 		}
 
@@ -79,6 +81,8 @@ shortcut_settings::shortcut_settings()
 		{ shortcut::gw_mute_unmute, shortcut_info{ "gw_mute_unmute", tr("Mute/Unmute Audio"), "Ctrl+Shift+M", shortcut_handler_id::game_window, false } },
 		{ shortcut::gw_volume_up, shortcut_info{ "gw_volume_up", tr("Volume Up"), "Ctrl+Shift++", shortcut_handler_id::game_window, true } },
 		{ shortcut::gw_volume_down, shortcut_info{ "gw_volume_down", tr("Volume Down"), "Ctrl+Shift+-", shortcut_handler_id::game_window, true } },
+		{ shortcut::gw_mesh_dump, shortcut_info{ "gw_mesh_dump", tr("Mesh dump"), "F10", shortcut_handler_id::game_window, true } },
+		{ shortcut::gw_mesh_dump_posed_toggle, shortcut_info{ "gw_mesh_dump_posed_toggle", tr("Mesh dump posed toggle"), "F9", shortcut_handler_id::game_window, true } },
 	})
 {
 }

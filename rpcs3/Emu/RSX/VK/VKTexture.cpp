@@ -15,6 +15,12 @@
 
 #include "util/asm.hpp"
 
+#pragma optimize("", off)
+
+
+#include <Emu/RSX/stb_image_write.h>
+#include <Emu/RSX/s3tc.h>
+
 namespace vk
 {
 	static void gpu_swap_bytes_impl(const vk::command_buffer& cmd, vk::buffer* buf, u32 element_size, u32 data_offset, u32 data_length)
@@ -1009,7 +1015,7 @@ namespace vk
 			{
 				caps.supports_byteswap = (image_linear_size >= 1024) || (image_setup_flags & source_is_gpu_resident);
 				caps.supports_hw_deswizzle = caps.supports_byteswap;
-				caps.supports_zero_copy = caps.supports_byteswap;
+				caps.supports_zero_copy    = false;  // caps.supports_byteswap;
 				caps.supports_vtc_decoding = false;
 				check_caps = false;
 			}
@@ -1030,6 +1036,21 @@ namespace vk
 
 			auto io_buf = rsx::io_buffer(buf_allocator);
 			opt = upload_texture_subresource(io_buf, layout, format, is_swizzled, caps);
+
+			if (layout.level == 0 &&
+				((format == CELL_GCM_TEXTURE_A8R8G8B8) ||
+				 (format == (CELL_GCM_TEXTURE_A8R8G8B8 | CELL_GCM_TEXTURE_LN)) || // TODO: difference?
+				 (format == CELL_GCM_TEXTURE_COMPRESSED_DXT45) ||
+			     (format == CELL_GCM_TEXTURE_COMPRESSED_DXT1))) // Sly 4 ?
+			{
+				dst_image->raw_data.resize(io_buf.size());
+				memcpy(dst_image->raw_data.data(), io_buf.data(), io_buf.size());
+			}
+			else
+			{
+				rsx_log.notice("TEXFORMAT IS %X   [%d x %d]", format, layout.width_in_texel, layout.height_in_texel);
+			}
+
 			upload_heap.unmap();
 
 			if (image_setup_flags & source_is_gpu_resident)

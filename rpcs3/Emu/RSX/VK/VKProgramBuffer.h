@@ -18,6 +18,35 @@ namespace vk
 			void recompile_fragment_program(const RSXFragmentProgram& RSXFP, fragment_program_type& fragmentProgramData, usz ID)
 		{
 			fragmentProgramData.Decompile(RSXFP);
+#if 0
+			// GOW UI skip
+
+			#if 0
+			const auto test = R"(float in_w = (1. / gl_FragCoord.w);
+	h0 = TEX2D(0, vec4(tc0.xy, 0., in_w).xy);
+	//FENCT
+	h0 = clamp16((h0 * tc1));
+	h0.xyz = clamp16((h0 * h0.wwww)).xyz;
+	h0.w = h0.w;)";
+			#else
+			// const auto test = "//FENCT\n\th0 = clamp16((h0 * tc1));\n\th0.xyz = clamp16((h0 * h0.wwww)).xyz;\n\th0.w = clamp16(h0).w;";
+			 const auto test = "//FENCT\n\th0 = clamp16((h0 * tc1));\n\th0.xyz = clamp16((h0 * h0.wwww)).xyz;\n\th0.w = h0.w;";
+			//const auto test = "h0.xyz = clamp16((h0 * h0.wwww)).xyz;";
+			//const auto test = "vec4 param = texture(tex0, (vec4(tc0.xy, 0.0, in_w).xy + vec2(_267.texture_parameters[0].scale_bias.w)) * _267.texture_parameters[0].scale_bias.xy);";
+			#endif
+			const auto& src = fragmentProgramData.shader.get_source();
+			if (src.find(test) != std::string::npos)
+			{
+				//__debugbreak();
+				//fs::file patched_shader(R"(D:\Nikos\Reversing\Sly\Renderdoc\sly2_main.vk.frag.glsl)");
+				//const std::string patched_shader_str = patched_shader.to_string();
+				std::string patched_shader_str = src;
+				//patched_shader_str.insert(src.find(test), "h0 = f16vec4(0.); return;");
+				patched_shader_str.insert(src.find(test), "h0 = vec4(0.); return;");
+				fragmentProgramData.shader.create(::glsl::program_domain::glsl_fragment_program, patched_shader_str);
+			}
+#endif
+
 			fragmentProgramData.id = static_cast<u32>(ID);
 			fragmentProgramData.Compile();
 		}

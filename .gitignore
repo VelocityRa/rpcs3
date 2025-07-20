@@ -123,3 +123,7 @@ CMakeUserPresets.json
 
 .cache/
 .lldbinit
+
+# 3rdparty/
+Vulkan/
+rpcs3/meshdump*

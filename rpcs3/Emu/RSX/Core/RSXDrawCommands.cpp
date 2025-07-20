@@ -8,6 +8,7 @@
 #include "Emu/RSX/Program/GLSLCommon.h"
 #include "Emu/RSX/rsx_methods.h"
 #include "Emu/RSX/RSXThread.h"
+#include "Emu/RSX/meshdump.h"
 
 #include "Emu/Memory/vm.h"
 
@@ -168,6 +169,9 @@ namespace rsx
 					interleaved_range_info& block = *result.alloc_interleaved_block();
 					block.base_offset = base_address;
 					block.attribute_stride = info.stride();
+					block.attribute_type         = info.type();
+					block.attribute_frequency    = info.frequency();
+					block.attribute_size = info.size();
 					block.memory_location = info.offset() >> 31;
 					block.locations.reserve(16);
 					block.locations.push_back({ index, modulo, info.frequency() });
@@ -553,6 +557,51 @@ namespace rsx
 
 				const u32 data_size = range.second * block->attribute_stride;
 				const u32 vertex_base = range.first * block->attribute_stride;
+
+				if (g_mesh_dumper.enabled)
+				{
+					const auto vertex_data_start = vm::_ptr<char>(block->real_offset_address) + vertex_base;
+
+					if (g_mesh_dumper.dumps.empty())
+						__debugbreak();
+
+					auto& mesh_draw_dump = g_mesh_dumper.get_dump();
+#if 0
+					if (!mesh_draw_dump.vertices.empty())
+					{
+						//mesh_draw_dump.vertices.clear();
+						//__debugbreak();
+					}
+					mesh_draw_dump.vertices.resize(vertex_count);
+					memcpy(mesh_draw_dump.vertices.data(), vertex_data_start, data_size);
+#elif 0
+					const auto prev_size = mesh_draw_dump.vertex_data.size();
+					mesh_draw_dump.vertex_data.resize(prev_size + data_size);
+					memcpy((u8*)mesh_draw_dump.vertex_data.data() + prev_size, vertex_data_start, data_size);
+#else
+
+					mesh_draw_dump.transform_branch_bits = rsx::method_registers.transform_branch_bits();
+					mesh_draw_dump_block dump_block;
+
+					dump_block.vertex_data.resize(data_size);
+					memcpy((u8*)dump_block.vertex_data.data(), vertex_data_start, data_size);
+
+					dump_block.interleaved_range_info = *block;
+
+					if (transient)
+					{
+						const auto vol      = static_cast<char*>(volatile_data);
+						const auto vol_size = transient - vol;
+						if (vol)
+						{
+							mesh_draw_dump.volatile_data.resize(vol_size);
+							memcpy(mesh_draw_dump.volatile_data.data(), vol, vol_size);
+						}
+					}
+
+					g_mesh_dumper.push_block(dump_block);
+#endif
+				}
 
 				g_fxo->get<rsx::dma_manager>().copy(persistent, vm::_ptr<char>(block->real_offset_address) + vertex_base, data_size);
 				persistent += data_size;

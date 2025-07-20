@@ -70,6 +70,7 @@ LogHighlighter::LogHighlighter(QTextDocument* parent) : Highlighter(parent)
 AsmHighlighter::AsmHighlighter(QTextDocument *parent) : Highlighter(parent)
 {
 	addRule("^\\b[A-Z0-9]+\\b",       Qt::darkBlue);    // Instructions
+	// addRule("^[A-Z0-9]+",             Qt::blue);        // Instructions
 	addRule("-?R\\d[^,;\\s]*",        Qt::darkRed);     // -R0.*
 	addRule("-?H\\d[^,;\\s]*",        Qt::red);         // -H1.*
 	addRule("-?v\\[\\d\\]*[^,;\\s]*", Qt::darkCyan);    // -v[xyz].*
@@ -172,6 +173,8 @@ GlslHighlighter::GlslHighlighter(QTextDocument *parent) : Highlighter(parent)
 
 	for (const QString& pattern : keywordPatterns)
 		addRule("\\b" + pattern + "\\b",   Qt::darkBlue);    // normal words like: soka, nani, or gomen
+	// for (const QString &pattern : keywordPatterns)
+	// 	addRule("\\b" + pattern + "\\b",   Qt::blue);        // normal words like: soka, nani, or gomen
 
 	addRule("\\bGL_(?:[A-Z]|_)+\\b",       Qt::darkMagenta); // constants like: GL_OMAE_WA_MOU_SHINDEIRU
 	addRule("\\bgl_(?:[A-Z]|[a-z]|_)+\\b", Qt::darkCyan);    // reserved types like: gl_exploooooosion

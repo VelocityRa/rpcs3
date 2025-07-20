@@ -2,11 +2,17 @@
 #include "../Common/BufferUtils.h"
 #include "../rsx_methods.h"
 
+#pragma optimize("", off)
+
 #include "VKAsyncScheduler.h"
 #include "VKGSRender.h"
 #include "vkutils/buffer_object.h"
 #include "vkutils/chip_class.h"
 #include <vulkan/vulkan_core.h>
+
+#include <Emu/RSX/RSXThread.h>
+#include <Emu/RSX/meshdump.h>
+#include <util/linalg_stuff.hpp>
 
 namespace vk
 {
@@ -416,6 +422,9 @@ void VKGSRender::load_texture_env()
 
 			m_textures_dirty[i] = false;
 		}
+
+		if (g_mesh_dumper.enabled)
+			g_mesh_dumper.save_texture(sampler_state, i, tex);
 	}
 
 	for (u32 textures_ref = current_vp_metadata.referenced_textures_mask, i = 0; textures_ref; textures_ref >>= 1, ++i)
@@ -769,6 +778,39 @@ void VKGSRender::emit_geometry(u32 sub_index)
 		return;
 	}
 
+	if (g_mesh_dumper.enabled && upload_info.index_info.has_value())
+	{
+		auto& mesh_draw_dump = g_mesh_dumper.get_dump();
+
+		if (!mesh_draw_dump.indices.empty())
+			__debugbreak();
+		mesh_draw_dump.indices.resize(upload_info.vertex_draw_count);
+		//const auto ringbuf         = (u8*)m_index_ring_buffer.get()->m_memory_mapping;
+		const auto index_info      = upload_info.index_info.value();
+		const auto index_type_size = std::get<1>(index_info) == VK_INDEX_TYPE_UINT32 ? 4 : 2;
+		//const auto index_data      = ringbuf + std::get<1>(index_info);
+
+		const auto index_data = upload_info.index_buf;
+
+		const auto index_data_size = index_type_size * upload_info.vertex_draw_count;
+
+		if (index_type_size == 2)
+		{
+			const u16* index_data_ptr = (u16*)(index_data);
+
+			for (auto i = 0; i < upload_info.vertex_draw_count; ++i)
+				mesh_draw_dump.indices[i] = index_data_ptr[i]; // - upload_info.vertex_index_offset;
+		}
+		else
+		{
+			const u32* index_data_ptr = (u32*)(index_data);
+
+			for (auto i = 0; i < upload_info.vertex_draw_count; ++i)
+				mesh_draw_dump.indices[i] = index_data_ptr[i]; // - upload_info.vertex_index_offset;
+			                                                   //memcpy(mesh_draw_dump.indices.data(), index_data, upload_info.vertex_draw_count * index_type_size);
+		}
+	}
+
 	m_frame_stats.vertex_upload_time += m_profiler.duration();
 
 	// Faults are allowed during vertex upload. Ensure consistent CB state after uploads.
@@ -1007,6 +1049,12 @@ void VKGSRender::end()
 		return;
 	}
 
+	if (g_mesh_dumper.enabled)
+	{
+		mesh_draw_dump d{};
+		g_mesh_dumper.push_dump(d);
+	}
+
 	m_profiler.start();
 
 	// Check for frame resource status here because it is possible for an async flip to happen between begin/end
@@ -1046,6 +1094,52 @@ void VKGSRender::end()
 	// Load program execution environment
 	load_program_env();
 	m_frame_stats.setup_time += m_profiler.duration();
+
+	if (g_mesh_dumper.enabled)
+	{
+		auto& dump = g_mesh_dumper.get_dump();
+
+		// dump.shader_id = (u32)m_program->pipeline;
+		dump.vert_shader_hash = (u32)program_hash_util::vertex_program_utils::get_vertex_program_ucode_hash_old(current_vertex_program);
+		dump.frag_shader_hash = (u32)program_hash_util::fragment_program_utils::get_fragment_program_ucode_hash_old(current_fragment_program);
+
+		memcpy(dump.vertex_constants_buffer.data(), rsx::method_registers.transform_constants.data(), 468 * sizeof(vec4));
+
+		//m_fragment_constants_ring_info
+	}
+	for (int binding_attempts = 0; binding_attempts < 3; binding_attempts++)
+	{
+		bool out_of_memory;
+		if (!m_shader_interpreter.is_interpreter(m_program)) [[likely]]
+		{
+			out_of_memory = bind_texture_env();
+		}
+		else
+		{
+			out_of_memory = bind_interpreter_texture_env();
+		}
+
+		// TODO: Replace OOM tracking with ref-counting to simplify the logic
+		if (!out_of_memory)
+		{
+			break;
+		}
+
+		if (!on_vram_exhausted(rsx::problem_severity::fatal))
+		{
+			// It is not possible to free memory. Just use placeholder textures. Can cause graphics glitches but shouldn't crash otherwise
+			break;
+		}
+
+		if (m_samplers_dirty)
+		{
+			// Reload texture env if referenced objects were invalidated during OOO handling.
+			load_texture_env();
+		}
+	}
+
+	m_texture_cache.release_uncached_temporary_subresources();
+	m_frame_stats.textures_upload_time += m_profiler.duration();
 
 	// Apply write memory barriers
 	if (auto ds = std::get<1>(m_rtts.m_bound_depth_stencil))

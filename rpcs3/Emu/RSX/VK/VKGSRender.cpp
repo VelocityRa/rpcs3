@@ -19,12 +19,15 @@
 #include "Emu/RSX/Host/MM.h"
 #include "Emu/RSX/Host/RSXDMAWriter.h"
 #include "Emu/RSX/NV47/HW/context_accessors.define.h"
+#include <Emu/RSX/meshdump.h>
 #include "Emu/Memory/vm_locking.h"
 
 #include "../Program/SPIRVCommon.h"
 
 #include "util/asm.hpp"
 #include <vulkan/vulkan_core.h>
+
+#pragma optimize("", off)
 
 namespace vk
 {
@@ -1242,6 +1245,8 @@ void VKGSRender::clear_surface(u32 mask)
 {
 	if (skip_current_frame || swapchain_unavailable) return;
 
+	g_clears_this_frame++;
+
 	// If stencil write mask is disabled, remove clear_stencil bit
 	if (!rsx::method_registers.stencil_mask()) mask &= ~RSX_GCM_CLEAR_STENCIL_BIT;
 
@@ -2001,6 +2006,8 @@ void VKGSRender::load_program_env()
 		}
 	}
 
+	static u32 s_prev_fragment_constants_size{};
+
 	if (update_fragment_constants && !m_shader_interpreter.is_interpreter(m_program))
 	{
 		// Fragment constants
@@ -2012,6 +2019,15 @@ void VKGSRender::load_program_env()
 			m_prog_buffer->fill_fragment_constants_buffer({ reinterpret_cast<float*>(buf), fragment_constants_size },
 				*ensure(m_fragment_prog), current_fragment_program, true);
 
+			if (g_mesh_dumper.enabled)
+			{
+				auto& dump = g_mesh_dumper.get_dump();
+
+				dump.fragment_constants_buffer.resize(fragment_constants_size / 16);
+				std::memcpy((void*)dump.fragment_constants_buffer.data(), buf, fragment_constants_size);
+				dump.fragment_constants_offsets = m_fragment_prog->FragmentConstantOffsetCache;
+			}
+
 			m_fragment_constants_ring_info.unmap();
 			m_fragment_constants_buffer_info = { m_fragment_constants_ring_info.heap->value, mem, fragment_constants_size };
 		}
@@ -2020,6 +2036,19 @@ void VKGSRender::load_program_env()
 			m_fragment_constants_buffer_info = { m_fragment_constants_ring_info.heap->value, 0, 32 };
 		}
 	}
+	else if (fragment_constants_size && fragment_constants_size == s_prev_fragment_constants_size)
+	{
+		// Fragment constants weren't updated so assume they're the same as the last draw
+		if (g_mesh_dumper.enabled)
+		{
+			auto& dump = g_mesh_dumper.get_dump();
+			auto& prev_dump = g_mesh_dumper.get_prev_dump();
+
+			dump.fragment_constants_buffer = prev_dump.fragment_constants_buffer;
+			dump.fragment_constants_offsets = prev_dump.fragment_constants_offsets;
+		}
+	}
+	s_prev_fragment_constants_size = fragment_constants_size;
 
 	if (update_fragment_env)
 	{
@@ -2170,7 +2199,8 @@ bool VKGSRender::is_current_program_interpreted() const
 void VKGSRender::upload_transform_constants(const rsx::io_buffer& buffer)
 {
 	const bool is_interpreter = m_shader_interpreter.is_interpreter(m_program);
-	const usz transform_constants_size = (is_interpreter || m_vertex_prog->has_indexed_constants) ? 8192 : m_vertex_prog->constant_ids.size() * 16;
+	// force true for meshdumping (TODO: needed?)
+	const usz transform_constants_size = (true || is_interpreter || m_vertex_prog->has_indexed_constants) ? 8192 : m_vertex_prog->constant_ids.size() * 16;
 
 	if (transform_constants_size)
 	{

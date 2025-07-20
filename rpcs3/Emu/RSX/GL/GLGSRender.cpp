@@ -11,6 +11,8 @@
 #include "Emu/RSX/Host/MM.h"
 #include "Emu/RSX/Host/RSXDMAWriter.h"
 #include "Emu/RSX/NV47/HW/context_accessors.define.h"
+#include <Emu/RSX/meshdump.h>
+#include <Emu/RSX/meshdump.h>
 
 [[noreturn]] extern void report_fatal_error(std::string_view _text, bool is_html = false, bool include_help_text = true);
 
@@ -580,6 +582,7 @@ void GLGSRender::on_exit()
 
 void GLGSRender::clear_surface(u32 arg)
 {
+	g_clears_this_frame++;
 	if (skip_current_frame) return;
 
 	// If stencil write mask is disabled, remove clear_stencil bit
@@ -883,6 +886,14 @@ void GLGSRender::load_program_env()
 	const bool update_raster_env = REGS(m_ctx)->polygon_stipple_enabled() && (m_graphics_state & rsx::pipeline_state::polygon_stipple_pattern_dirty);
 	const bool update_instancing_data = REGS(m_ctx)->current_draw_clause.is_trivial_instanced_draw;
 
+	if (g_mesh_dumper.enabled)
+	{
+		auto& dump     = g_mesh_dumper.get_dump();
+		//dump.shader_id = m_program->id();
+		dump.vert_shader_hash = (u32)program_hash_util::vertex_program_utils::get_vertex_program_ucode_hash_old(current_vertex_program);
+		dump.frag_shader_hash = (u32)program_hash_util::fragment_program_utils::get_fragment_program_ucode_hash_old(current_fragment_program);
+	}
+
 	if (manually_flush_ring_buffers)
 	{
 		if (update_fragment_env) m_fragment_env_buffer->reserve_storage_on_heap(128);
@@ -1090,7 +1101,8 @@ bool GLGSRender::is_current_program_interpreted() const
 void GLGSRender::upload_transform_constants(const rsx::io_buffer& buffer)
 {
 	const bool is_interpreter = m_shader_interpreter.is_interpreter(m_program);
-	const usz transform_constants_size = (is_interpreter || m_vertex_prog->has_indexed_constants) ? 8192 : m_vertex_prog->constant_ids.size() * 16;
+	// force true for meshdumping (TODO: needed?)
+	const usz transform_constants_size = (true || is_interpreter || m_vertex_prog->has_indexed_constants) ? 8192 : m_vertex_prog->constant_ids.size() * 16;
 
 	if (transform_constants_size)
 	{

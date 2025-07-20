@@ -455,6 +455,7 @@
     <ClCompile Include="Emu\RSX\Capture\rsx_capture.cpp" />
     <ClCompile Include="Emu\RSX\Capture\rsx_replay.cpp" />
     <ClCompile Include="Emu\RSX\Program\CgBinaryProgram.cpp" />
+    <ClCompile Include="Emu\RSX\s3tc.cpp" />
     <ClCompile Include="Emu\RSX\Program\CgBinaryFragmentProgram.cpp" />
     <ClCompile Include="Emu\RSX\Program\CgBinaryVertexProgram.cpp" />
     <ClCompile Include="Emu\RSX\Common\BufferUtils.cpp" />
@@ -525,6 +526,7 @@
     <ClCompile Include="Emu\RSX\GSRender.cpp" />
     <ClCompile Include="Emu\RSX\RSXTexture.cpp" />
     <ClCompile Include="Emu\RSX\RSXThread.cpp" />
+    <ClCompile Include="Emu\RSX\meshdump.cpp" />
     <ClCompile Include="Emu\Memory\vm.cpp" />
     <ClCompile Include="Emu\System.cpp" />
     <ClCompile Include="Emu\GDB.cpp" />
@@ -961,7 +963,9 @@
     <ClInclude Include="Emu\RSX\RSXOffload.h" />
     <ClInclude Include="Emu\RSX\rsx_cache.h" />
     <ClInclude Include="Emu\RSX\rsx_decode.h" />
-    <ClInclude Include="Emu\RSX\rsx_vertex_data.h" />
+    <ClInclude Include="Emu\RSX\s3tc.h" />
+    <ClInclude Include="Emu\RSX\umHalf.h" />
+    <ClInclude Include="util\linalg_stuff.hpp" />
     <ClInclude Include="Emu\VFS.h" />
     <ClInclude Include="Emu\GameInfo.h" />
     <ClInclude Include="Emu\IdManager.h" />
@@ -984,7 +988,7 @@
     <ClInclude Include="Emu\RSX\Null\NullGSRender.h" />
     <ClInclude Include="Emu\RSX\Program\RSXFragmentProgram.h" />
     <ClInclude Include="Emu\RSX\RSXTexture.h" />
-    <ClInclude Include="Emu\RSX\RSXThread.h" />
+    <ClInclude Include="Emu\RSX\meshdump.h" />
     <ClInclude Include="Emu\RSX\Program\RSXVertexProgram.h" />
     <ClInclude Include="Emu\Memory\vm.h" />
     <ClInclude Include="Emu\Memory\vm_ptr.h" />

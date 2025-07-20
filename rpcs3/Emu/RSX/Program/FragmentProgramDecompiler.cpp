@@ -1,7 +1,67 @@
 #include "stdafx.h"
 #include "FragmentProgramDecompiler.h"
+#include <Emu/RSX/Program/ProgramStateCache.h>
 
 #include <algorithm>
+
+
+// todo move
+namespace neolib
+{
+	template <class Elem, class Traits>
+	inline void hex_dump(const void* aData, std::size_t aLength, std::basic_ostream<Elem, Traits>& aStream, std::size_t aWidth = 16, ::std::string prepend_line = "")
+	{
+		const char* const start = static_cast<const char*>(aData);
+		const char* const end   = start + aLength;
+		const char* line        = start;
+		while (line != end)
+		{
+			aStream << prepend_line;
+			aStream.width(4);
+			aStream.fill('0');
+			aStream << std::hex << line - start << " ";
+			std::size_t lineLength = std::min(aWidth, static_cast<std::size_t>(end - line));
+			for (std::size_t pass = 1; pass <= 3; ++pass)
+			{
+				if (pass == 3)
+				{
+					const auto word_count = aWidth / 4;
+					for (const char* next = line; next < line + word_count * 4; next += 4)
+					{
+						const auto v = _byteswap_ulong(*(const u32*)(next));
+						aStream << *(const float*)&v;
+						aStream << " ";
+					}
+					break;
+				}
+
+				for (const char* next = line; next != end && next != line + aWidth; ++next)
+				{
+					char ch = *next;
+					switch (pass)
+					{
+					case 1:
+						aStream << (ch < 32 ? '.' : ch);
+						break;
+					case 2:
+						if (next != line)
+							aStream << " ";
+						aStream.width(2);
+						aStream.fill('0');
+						aStream << std::hex << std::uppercase << static_cast<int>(static_cast<unsigned char>(ch));
+						break;
+					}
+				}
+				if (pass == 1 && lineLength != aWidth)
+					aStream << std::string(aWidth - lineLength, ' ');
+				aStream << " ";
+			}
+			aStream << std::endl;
+			line = line + lineLength;
+		}
+	}
+} // namespace neolib
+
 
 namespace rsx
 {
@@ -1069,6 +1129,17 @@ std::string FragmentProgramDecompiler::BuildCode()
 	}
 	insertMainEnd(OS);
 
+	std::stringstream shader_hex_str;
+	neolib::hex_dump((const void*)m_prog.data.data_ptr, m_size, shader_hex_str, 16, "// ");
+
+	OS << "\n// Instruction Count: " << m_ins_count << "\n\n";
+
+	const u32 hash = (u32)program_hash_util::fragment_program_utils::get_fragment_program_ucode_hash(m_prog);
+	OS << "\n// Hash :" << std::hex << hash << "\n\n";
+
+	OS << "// Hex dump:\n";
+	OS << shader_hex_str.str();
+
 	return OS.str();
 }
 
@@ -1432,6 +1503,7 @@ std::string FragmentProgramDecompiler::Decompile()
 		}
 
 		m_size += m_offset;
+		m_ins_count += 1;
 
 		if (dst.end) break;
 
@@ -1450,6 +1522,9 @@ std::string FragmentProgramDecompiler::Decompile()
 	// flush m_code_level
 	m_code_level = 1;
 	std::string m_shader = BuildCode();
+
+	m_shader += "\n// size:" + std::to_string(m_shader.size());
+
 	main.clear();
 	//	m_parr.params.clear();
 	return m_shader;

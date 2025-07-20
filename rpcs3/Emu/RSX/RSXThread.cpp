@@ -1,6 +1,16 @@
 #include "stdafx.h"
 #include "RSXThread.h"
 
+#include <Emu/RSX/meshdump.h>
+
+#include "Emu/Cell/PPUCallback.h"
+#include "Emu/Cell/timers.hpp"
+
+#include "Common/BufferUtils.h"
+#include "Common/buffer_stream.hpp"
+#include "Common/texture_cache.h"
+#include "Common/surface_store.h"
+#include "Common/time.hpp"
 #include "Capture/rsx_capture.h"
 #include "Common/surface_store.h"
 #include "Core/RSXReservationLock.hpp"
@@ -29,9 +39,13 @@
 
 #include "util/asm.hpp"
 
+//#pragma optimize("", off)
+
 #include <span>
 #include <thread>
 #include <unordered_set>
+#include <cfenv>
+#include <cmath>
 
 class GSRender;
 
@@ -40,6 +54,7 @@ class GSRender;
 atomic_t<bool> g_user_asked_for_recording = false;
 atomic_t<bool> g_user_asked_for_screenshot = false;
 atomic_t<bool> g_user_asked_for_frame_capture = false;
+atomic_t<bool> g_user_asked_for_mesh_dump= false;
 atomic_t<bool> g_disable_frame_limit = false;
 rsx::frame_trace_data frame_debug;
 rsx::frame_capture_data frame_capture;
@@ -114,6 +129,62 @@ bool serialize<rsx::rsx_iomap_table>(utils::serial& ar, rsx::rsx_iomap_table& o)
 
 	return true;
 }
+
+namespace neolib
+{
+	template <class Elem, class Traits>
+	inline void hex_dump(const void* aData, std::size_t aLength, std::basic_ostream<Elem, Traits>& aStream, std::size_t aWidth = 16, ::std::string prepend_line = "")
+	{
+		const char* const start = static_cast<const char*>(aData);
+		const char* const end   = start + aLength;
+		const char* line        = start;
+		while (line != end)
+		{
+			aStream << prepend_line;
+			aStream.width(4);
+			aStream.fill('0');
+			aStream << std::hex << line - start << " ";
+			std::size_t lineLength = std::min(aWidth, static_cast<std::size_t>(end - line));
+			for (std::size_t pass = 1; pass <= 3; ++pass)
+			{
+				if (pass == 3)
+				{
+					const auto word_count = aWidth / 4;
+					for (const char* next = line; next < line + word_count * 4; next += 4)
+					{
+						const auto v = _byteswap_ulong(*(const u32*)(next));
+						aStream << *(const float*)&v;
+						aStream << " ";
+					}
+					break;
+				}
+
+				for (const char* next = line; next != end && next != line + aWidth; ++next)
+				{
+					char ch = *next;
+					switch (pass)
+					{
+					case 1:
+						aStream << (ch < 32 ? '.' : ch);
+						break;
+					case 2:
+						if (next != line)
+							aStream << " ";
+						aStream.width(2);
+						aStream.fill('0');
+						aStream << std::hex << std::uppercase << static_cast<int>(static_cast<unsigned char>(ch));
+						break;
+					}
+				}
+				if (pass == 1 && lineLength != aWidth)
+					aStream << std::string(aWidth - lineLength, ' ');
+				aStream << " ";
+			}
+			aStream << std::endl;
+			line = line + lineLength;
+		}
+	}
+} // namespace neolib
 
 namespace rsx
 {
@@ -684,6 +755,7 @@ namespace rsx
 		m_graphics_state |= pipeline_state::all_dirty;
 
 		g_user_asked_for_frame_capture = false;
+		g_user_asked_for_mesh_dump = false;
 
 		// TODO: Proper context management in the driver
 		s_ctx.rsxthr = this;
@@ -903,6 +975,8 @@ namespace rsx
 
 	void thread::on_task()
 	{
+		g_mesh_dumper_mtx.lock();
+
 		g_tls_log_prefix = []
 		{
 			const auto rsx = get_current_renderer();
@@ -1144,6 +1218,8 @@ namespace rsx
 		g_fxo->get<rsx::dma_manager>().join();
 		g_fxo->get<vblank_thread>() = thread_state::finished;
 		state += cpu_flag::exit;
+
+		g_mesh_dumper_mtx.unlock();
 	}
 
 	u64 thread::timestamp()
@@ -2368,6 +2444,8 @@ namespace rsx
 	{
 		m_eng_interrupt_mask.clear(rsx::display_interrupt);
 
+		g_clears_this_frame = 0;
+
 		if (async_flip_requested & flip_request::any)
 		{
 			// Deferred flip
@@ -2389,6 +2467,12 @@ namespace rsx
 			{
 				Emu.Pause();
 			}
+
+			//if (performance_counters.sampled_frames >= 70 && (performance_counters.sampled_frames % 180 == 0))
+			//{
+			//	g_mesh_dumper.enable_this_frame = true;
+			//	g_mesh_dumper.enabled = true;
+			//}
 		}
 
 		last_host_flip_timestamp = get_system_time();
@@ -3053,6 +3137,17 @@ namespace rsx
 		// MM sync. This is a pre-emptive operation, so we can use a deferred request.
 		rsx::mm_flush_lazy();
 
+		
+		if (g_user_asked_for_mesh_dump.exchange(false) && !g_mesh_dumper.enabled)
+		{
+			g_mesh_dumper.enabled = true;
+		}
+		else if (g_mesh_dumper.enabled)
+		{
+			g_mesh_dumper.enabled = false;
+			g_mesh_dumper.dump();
+		}
+
 		// Marks the end of a frame scope GPU-side
 		if (g_user_asked_for_frame_capture.exchange(false) && !capture_current_frame)
 		{
@@ -3155,7 +3250,13 @@ namespace rsx
 			Emu.Pause();
 			thread_ctrl::wait_for(30'000);
 		}
+		rsx_log.notice("FRAME END (draws: %d)", m_frame_stats.draw_calls);
 
+		g_mesh_dumper_mtx.unlock();
+		for (auto i = 0; i < 100; ++i) // lol
+			std::this_thread::yield();
+		g_mesh_dumper_mtx.lock();
+		// 
 		// Reset current stats
 		m_frame_stats = {};
 		m_profiler.enabled = !!g_cfg.video.debug_overlay;
@@ -3347,6 +3448,11 @@ namespace rsx
 				intr_thread->cmd_notify.store(1);
 				intr_thread->cmd_notify.notify_one();
 			}
+
+			//g_mesh_dumper_mtx.unlock();
+			//for (auto i = 0; i < 100; ++i) // lol
+			//	std::this_thread::yield();
+			//g_mesh_dumper_mtx.lock();
 		}
 	}
 

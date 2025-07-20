@@ -31,7 +31,8 @@ namespace program_hash_util
 			u16 reserved;
 		};
 
-		static usz get_vertex_program_ucode_hash(const RSXVertexProgram &program);
+		static usz get_vertex_program_ucode_hash(const RSXVertexProgram& program);
+		static usz get_vertex_program_ucode_hash_old(const RSXVertexProgram& program);
 
 		static vertex_program_metadata analyse_vertex_program(const u32* data, u32 entry, RSXVertexProgram& dst_prog);
 	};
@@ -67,12 +68,14 @@ namespace program_hash_util
 		*/
 
 		static bool is_any_src_constant(v128 sourceOperand);
+		static bool is_constant(u32 sourceOperand);
 
 		static usz get_fragment_program_ucode_size(const void* ptr);
 
 		static fragment_program_metadata analyse_fragment_program(const void* ptr);
 
-		static usz get_fragment_program_ucode_hash(const RSXFragmentProgram &program);
+		static usz get_fragment_program_ucode_hash(const RSXFragmentProgram& program);
+		static usz get_fragment_program_ucode_hash_old(const RSXFragmentProgram& program);
 	};
 
 	struct fragment_program_storage_hash

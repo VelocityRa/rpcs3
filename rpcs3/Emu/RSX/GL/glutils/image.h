@@ -341,6 +341,9 @@ namespace gl
 			const coord3u region = { {}, size3D() };
 			copy_to(dst, format, type, 0, region, pixel_settings);
 		}
+
+		public:
+		std::vector<std::byte> raw_data;
 	};
 
 	class texture_view

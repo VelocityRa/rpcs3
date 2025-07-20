@@ -1,7 +1,69 @@
 #include "stdafx.h"
 #include "VertexProgramDecompiler.h"
+#include <Emu/RSX/Program/ProgramStateCache.h>
 
 #include <sstream>
+
+
+
+// todo move
+namespace neolib
+{
+	template <class Elem, class Traits>
+	inline void hex_dump(const void* aData, std::size_t aLength, std::basic_ostream<Elem, Traits>& aStream, std::size_t aWidth = 16, ::std::string prepend_line = "")
+	{
+		const char* const start = static_cast<const char*>(aData);
+		const char* const end   = start + aLength;
+		const char* line        = start;
+		while (line != end)
+		{
+			aStream << prepend_line;
+			aStream.width(4);
+			aStream.fill('0');
+			aStream << std::hex << line - start << " ";
+			std::size_t lineLength = std::min(aWidth, static_cast<std::size_t>(end - line));
+			for (std::size_t pass = 1; pass <= 3; ++pass)
+			{
+				if (pass == 3)
+				{
+					const auto word_count = aWidth / 4;
+					for (const char* next = line; next < line + word_count * 4; next += 4)
+					{
+						const auto v = _byteswap_ulong(*(const u32*)(next));
+						aStream << *(const float*)&v;
+						aStream << " ";
+					}
+					break;
+				}
+
+				for (const char* next = line; next != end && next != line + aWidth; ++next)
+				{
+					char ch = *next;
+					switch (pass)
+					{
+					case 1:
+						aStream << (ch < 32 ? '.' : ch);
+						break;
+					case 2:
+						if (next != line)
+							aStream << " ";
+						aStream.width(2);
+						aStream.fill('0');
+						aStream << std::hex << std::uppercase << static_cast<int>(static_cast<unsigned char>(ch));
+						break;
+					}
+				}
+				if (pass == 1 && lineLength != aWidth)
+					aStream << std::string(aWidth - lineLength, ' ');
+				aStream << " ";
+			}
+			aStream << std::endl;
+			line = line + lineLength;
+		}
+	}
+} // namespace neolib
+
+
 
 std::string VertexProgramDecompiler::GetMask(bool is_sca) const
 {
@@ -396,7 +458,7 @@ std::string VertexProgramDecompiler::BuildCode()
 		m_parr.AddParam(PF_PARAM_OUT, float4_type, "dst_reg0", float4_type + "(0., 0., 0., 1.)");
 	}
 
-	if (!properties.has_indexed_constants && !m_constant_ids.empty())
+	if (false && !properties.has_indexed_constants && !m_constant_ids.empty())
 	{
 		// Relocate transform constants
 		std::vector<std::pair<std::string, std::string>> reloc_table;
@@ -433,6 +495,18 @@ std::string VertexProgramDecompiler::BuildCode()
 	insertMainStart(OS);
 	OS << main_body.c_str() << std::endl;
 	insertMainEnd(OS);
+
+	
+	std::stringstream shader_hex_str;
+	neolib::hex_dump((const void*)m_prog.data.data(), m_prog.data.size(), shader_hex_str, 16, "// ");
+
+	OS << "\n// Instruction Count: " << m_prog.data.size() / 4 << "\n\n";
+
+	const u32 hash = (u32)program_hash_util::vertex_program_utils::get_vertex_program_ucode_hash(m_prog);
+	OS << "\n// Hash :" << std::hex << hash << "\n\n";
+
+	OS << "// Hex dump:\n";
+	OS << shader_hex_str.str();
 
 	return OS.str();
 }

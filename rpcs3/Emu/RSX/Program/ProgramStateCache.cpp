@@ -133,6 +133,29 @@ usz vertex_program_utils::get_vertex_program_ucode_hash(const RSXVertexProgram &
 	return acc0 + acc1;
  }
 
+usz vertex_program_utils::get_vertex_program_ucode_hash_old(const RSXVertexProgram& program)
+{
+	// 64-bit Fowler/Noll/Vo FNV-1a hash code
+	usz hash = 0xCBF29CE484222325ULL;
+	const void* instbuffer = program.data.data();
+	usz instIndex = 0;
+
+	for (unsigned i = 0; i < program.data.size() / 4; i++)
+	{
+		if (program.instruction_mask[i])
+		{
+			const auto inst = v128::loadu(instbuffer, instIndex);
+			hash ^= inst._u64[0];
+			hash += (hash << 1) + (hash << 4) + (hash << 5) + (hash << 7) + (hash << 8) + (hash << 40);
+			hash ^= inst._u64[1];
+			hash += (hash << 1) + (hash << 4) + (hash << 5) + (hash << 7) + (hash << 8) + (hash << 40);
+		}
+
+		instIndex++;
+	}
+	return hash;
+}
+
 vertex_program_utils::vertex_program_metadata vertex_program_utils::analyse_vertex_program(const u32* data, u32 entry, RSXVertexProgram& dst_prog)
 {
 	vertex_program_utils::vertex_program_metadata result{};
@@ -581,6 +604,11 @@ bool fragment_program_utils::is_any_src_constant(v128 sourceOperand)
 	return (sourceOperand._u32[1] & 0x300) == 0x200 || (static_cast<u32>(masked) == 0x200 || static_cast<u32>(masked >> 32) == 0x200);
 }
 
+bool fragment_program_utils::is_constant(u32 sourceOperand)
+{
+	return ((sourceOperand >> 8) & 0x3) == 2;
+}
+
 usz fragment_program_utils::get_fragment_program_ucode_size(const void* ptr)
 {
 	const auto instBuffer = ptr;
@@ -722,6 +750,33 @@ usz fragment_program_utils::get_fragment_program_ucode_hash(const RSXFragmentPro
 
 	}
 	return acc0 + acc1;
+}
+
+usz fragment_program_utils::get_fragment_program_ucode_hash_old(const RSXFragmentProgram& program)
+{
+	// 64-bit Fowler/Noll/Vo FNV-1a hash code
+	usz hash = 0xCBF29CE484222325ULL;
+	const void* instbuffer = program.get_data();
+	usz instIndex = 0;
+	while (true)
+	{
+		const auto inst = v128::loadu(instbuffer, instIndex);
+		hash ^= inst._u64[0];
+		hash += (hash << 1) + (hash << 4) + (hash << 5) + (hash << 7) + (hash << 8) + (hash << 40);
+		hash ^= inst._u64[1];
+		hash += (hash << 1) + (hash << 4) + (hash << 5) + (hash << 7) + (hash << 8) + (hash << 40);
+		instIndex++;
+		// Skip constants
+		if (fragment_program_utils::is_constant(inst._u32[1]) ||
+			fragment_program_utils::is_constant(inst._u32[2]) ||
+			fragment_program_utils::is_constant(inst._u32[3]))
+			instIndex++;
+
+		bool end = (inst._u32[0] >> 8) & 0x1;
+		if (end)
+			return hash;
+	}
+	return 0;
 }
 
 usz fragment_program_storage_hash::operator()(const RSXFragmentProgram& program) const

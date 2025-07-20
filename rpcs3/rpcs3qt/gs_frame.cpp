@@ -18,6 +18,7 @@
 #include "Emu/RSX/Overlays/overlay_message.h"
 #include "Emu/Io/interception.h"
 #include "Emu/Io/recording_config.h"
+#include <Emu/RSX/meshdump.h>
 
 #include <QApplication>
 #include <QDateTime>
@@ -45,6 +46,8 @@
 #endif
 #endif
 
+#include <Emu/RSX/RSXThread.h>
+
 LOG_CHANNEL(screenshot_log, "SCREENSHOT");
 LOG_CHANNEL(mark_log, "MARK");
 LOG_CHANNEL(gui_log, "GUI");
@@ -52,6 +55,7 @@ LOG_CHANNEL(gui_log, "GUI");
 extern atomic_t<bool> g_user_asked_for_recording;
 extern atomic_t<bool> g_user_asked_for_screenshot;
 extern atomic_t<bool> g_user_asked_for_frame_capture;
+extern atomic_t<bool> g_user_asked_for_mesh_dump;
 extern atomic_t<bool> g_disable_frame_limit;
 extern atomic_t<bool> g_game_window_focused;
 extern atomic_t<recording_mode> g_recording_mode;
@@ -374,6 +378,43 @@ void gs_frame::handle_shortcut(gui::shortcuts::shortcut shortcut_key, const QKey
 		audio::change_volume(-5);
 		break;
 	}
+	case gui::shortcuts::shortcut::gw_mesh_dump:
+	{
+		g_user_asked_for_mesh_dump = true;
+		break;
+	}
+	case gui::shortcuts::shortcut::gw_mesh_dump_posed_toggle:
+	{
+		g_mesh_dump_config_posed = !g_mesh_dump_config_posed;
+		gui_log.warning("Posed mode: %s", g_mesh_dump_config_posed ? "Enabled" : "Disabled");
+		break;
+	}
+
+#if 0
+	auto get_sly_cam_mat = []() -> be_t<float>* {
+		const u64 emu_mem_base         = 0x300000000;
+		const uint32_t* cam_struct_ptr = (uint32_t*)(emu_mem_base + 0x005EC6D4);
+		const u8* cam_struct_addr      = (u8*)emu_mem_base + _byteswap_ulong(*cam_struct_ptr);
+		be_t<float>* cam_matrix_addr   = (be_t<float>*)((u8*)cam_struct_addr + 0x50);
+		return cam_matrix_addr;
+	};
+
+	float speed_mod = 1.0;
+	if (keyEvent->modifiers() & Qt::AltModifier)
+		speed_mod = 0.2;
+	else if (keyEvent->modifiers() & Qt::ShiftModifier)
+		speed_mod = 3.0;
+	else if (keyEvent->modifiers() & Qt::ControlModifier)
+		speed_mod = 0.03;
+
+	case Qt::Key_5: if (keyEvent->modifiers() == Qt::KeypadModifier) get_sly_cam_mat()[12] -= 2000 * speed_mod; break;
+	case Qt::Key_8: if (keyEvent->modifiers() == Qt::KeypadModifier) get_sly_cam_mat()[12] += 2000 * speed_mod; break;
+	case Qt::Key_6: if (keyEvent->modifiers() == Qt::KeypadModifier) get_sly_cam_mat()[13] -= 2000 * speed_mod; break;
+	case Qt::Key_4: if (keyEvent->modifiers() == Qt::KeypadModifier) get_sly_cam_mat()[13] += 2000 * speed_mod; break;
+	case Qt::Key_7: if (keyEvent->modifiers() == Qt::KeypadModifier) get_sly_cam_mat()[14] -= 1000 * speed_mod; break;
+	case Qt::Key_9: if (keyEvent->modifiers() == Qt::KeypadModifier) get_sly_cam_mat()[14] += 1000 * speed_mod; break;
+#endif
+
 	default:
 	{
 		break;

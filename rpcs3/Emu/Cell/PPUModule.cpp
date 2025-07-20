@@ -2296,10 +2296,14 @@ bool ppu_load_exec(const ppu_exec_object& elf, bool virtual_load, const std::str
 	Emu.SetExecutableHash(hash);
 
 	// Apply the patch
-	std::vector<u32> applied;
-	g_fxo->get<patch_engine>().apply(applied, !ar ? hash : std::string{}, [&](u32 addr, u32 size) { return _main.get_ptr<u8>(addr, size);  });
+	 std::vector<u32> applied;
+	 g_fxo->get<patch_engine>().apply(applied, !ar ? hash : std::string{}, [&](u32 addr, u32 size) { return _main.get_ptr<u8>(addr, size);  });
+	// OLD
+	//auto applied = g_fxo->get<patch_engine>().apply(!ar ? hash : std::string{}, vm::g_base_addr);
+	//auto applied = g_fxo->get<patch_engine>().apply(hash, vm::g_base_addr);
 
-	if (!ar && !Emu.GetTitleID().empty())
+	//if (!ar && !Emu.GetTitleID().empty())
+	if (!Emu.GetTitleID().empty())
 	{
 		// Alternative patch
 		g_fxo->get<patch_engine>().apply(applied, Emu.GetTitleID() + '-' + hash, [&](u32 addr, u32 size) { return _main.get_ptr<u8>(addr, size); });

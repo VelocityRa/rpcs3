@@ -8,6 +8,7 @@
 #include "memory.h"
 
 #include <stack>
+#include <vector>
 
 //using enum rsx::format_class;
 using namespace ::rsx::format_class_;
@@ -39,6 +40,8 @@ namespace vk
 		image() = default;
 		void create_impl(const vk::render_device& dev, u32 access_flags, const memory_type_info& memory_type, vmm_allocation_pool allocation_pool);
 
+	public:
+		std::vector<std::byte> raw_data;
 	public:
 		VkImage value = VK_NULL_HANDLE;
 		VkComponentMapping native_component_map = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A };
